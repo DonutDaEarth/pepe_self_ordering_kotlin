@@ -12,6 +12,7 @@ import androidx.camera.view.PreviewView
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.material3.Text
 import androidx.compose.runtime.*
@@ -45,6 +46,7 @@ import kotlinx.coroutines.launch
 import java.util.concurrent.Executors
 
 data class ScannedQRData(
+    val id: String,
     val outlet: String,
     val table: String
 )
@@ -65,14 +67,6 @@ fun QRScannerScreen(
     LaunchedEffect(Unit) {
         if (!cameraPermissionState.status.isGranted) {
             cameraPermissionState.launchPermissionRequest()
-        }
-    }
-
-    // Navigate after QR code is scanned
-    LaunchedEffect(scannedData) {
-        scannedData?.let { data ->
-            kotlinx.coroutines.delay(1500)
-            onQRScanned(data)
         }
     }
 
@@ -236,7 +230,17 @@ fun QRScannerScreen(
                         color = OrangePrimary,
                         shape = androidx.compose.foundation.shape.RoundedCornerShape(16.dp)
                     )
-                    .padding(vertical = 8.dp),
+                    .padding(vertical = 8.dp)
+                    .then(
+                        if (currentScannedData != null) {
+                            Modifier.clickable {
+                                // Navigate to menu when button is clicked
+                                onQRScanned(currentScannedData)
+                            }
+                        } else {
+                            Modifier
+                        }
+                    ),
                 contentAlignment = Alignment.Center
             ) {
                 if (currentScannedData == null) {
@@ -282,8 +286,7 @@ fun QRScannerScreen(
                         authDataStore.clearAuthData()
                         onLogout()
                     }
-                },
-
+                }
             )
         }
     }
@@ -375,20 +378,43 @@ private fun processImageProxy(
 
 private fun parseQRContent(qrContent: String): ScannedQRData? {
     return try {
-        // Try to parse format: "outlet:Brooklyn Tower,table:A7B"
-        val parts = qrContent.split(",")
-        if (parts.size >= 2) {
-            val outlet = parts[0].substringAfter("outlet:").trim()
-            val table = parts[1].substringAfter("table:").trim()
-            ScannedQRData("Outlet $outlet", "Table $table")
+        // First, try to decode hex-encoded JSON
+        // Expected format: "7B226964223A2231222C226F75746C6574223A224F75746C65742042726F6F6B6C796E20546F776572222C227461626C65223A22413742227D"
+        val decodedJson = if (qrContent.matches(Regex("^[0-9A-Fa-f]+$"))) {
+            // It's a hex string, decode it
+            hexToString(qrContent)
         } else {
-            // Fallback: use dummy data for any QR code
-            ScannedQRData("Outlet Brooklyn Tower", "Table A7B")
+            // It's already a regular string
+            qrContent
         }
+
+        Log.d("QRScanner", "Decoded QR content: $decodedJson")
+
+        // Parse JSON: {"id":"1","outlet":"Outlet Brooklyn Tower","table":"A7B"}
+        val json = org.json.JSONObject(decodedJson)
+        val id = json.getString("id")
+        val outlet = json.getString("outlet")
+        val table = json.getString("table")
+
+        ScannedQRData(id, outlet, "Table $table")
     } catch (e: Exception) {
-        // If parsing fails, return dummy data
-        ScannedQRData("Outlet Brooklyn Tower", "Table A7B")
+        Log.e("QRScanner", "Failed to parse QR content: ${e.message}")
+        // Fallback: return null to indicate invalid QR code
+        null
     }
+}
+
+// Helper function to convert hex string to regular string
+private fun hexToString(hex: String): String {
+    val result = StringBuilder()
+    var i = 0
+    while (i < hex.length) {
+        val hexByte = hex.substring(i, i + 2)
+        val decimal = hexByte.toInt(16)
+        result.append(decimal.toChar())
+        i += 2
+    }
+    return result.toString()
 }
 
 @Preview(showBackground = true)
