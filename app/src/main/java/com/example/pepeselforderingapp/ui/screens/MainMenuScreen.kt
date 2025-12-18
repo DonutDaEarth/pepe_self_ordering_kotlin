@@ -259,19 +259,19 @@ fun MainMenuScreen(
                 },
                 onAddToCart = { selectedSubitems, quantity ->
                     // Add to cart with selected subitems
-                    if (quantity > 0) {
-                        cartViewModel?.addToCart(
-                            CartItemData(
-                                name = selectedMenuDetail!!.name,
-                                description = selectedMenuDetail!!.description,
-                                basePrice = selectedMenuDetail!!.basePrice,
-                                selectedSubitems = selectedSubitems,
-                                quantity = quantity,
-                                imageRes = selectedMenuDetail!!.imageRes
-                            )
+                    cartViewModel?.addToCart(
+                        CartItemData(
+                            name = selectedMenuDetail!!.name,
+                            description = selectedMenuDetail!!.description,
+                            basePrice = selectedMenuDetail!!.basePrice,
+                            selectedSubitems = selectedSubitems,
+                            quantity = quantity,
+                            imageRes = selectedMenuDetail!!.imageRes
                         )
-                    }
-                    // Note: If quantity is 0, we don't add to cart (user decremented to 0)
+                    )
+                    showMenuDetail = false
+                    selectedMenuItem = null
+                    selectedMenuDetail = null
                 }
             )
         }
