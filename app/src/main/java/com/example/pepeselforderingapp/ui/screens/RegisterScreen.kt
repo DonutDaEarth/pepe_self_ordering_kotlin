@@ -153,14 +153,35 @@ fun RegisterScreen(
                 onClick = {
                     // Validation
                     when {
-                        email.isBlank() || password.isBlank() -> {
-                            errorMessage = "Email and password are required"
+                        name.isBlank() -> {
+                            errorMessage = "Name is required"
+                        }
+                        email.isBlank() -> {
+                            errorMessage = "Email is required"
+                        }
+                        !android.util.Patterns.EMAIL_ADDRESS.matcher(email).matches() -> {
+                            errorMessage = "Please enter a valid email address"
+                        }
+                        password.isBlank() -> {
+                            errorMessage = "Password is required"
+                        }
+                        confirmedPassword.isBlank() -> {
+                            errorMessage = "Confirmed password is required"
+                        }
+                        password.length < 8 -> {
+                            errorMessage = "Password must be at least 8 characters"
+                        }
+                        !password.any { it.isLowerCase() } -> {
+                            errorMessage = "Password must contain at least 1 lowercase letter"
+                        }
+                        !password.any { it.isUpperCase() } -> {
+                            errorMessage = "Password must contain at least 1 uppercase letter"
+                        }
+                        !password.any { it.isDigit() } -> {
+                            errorMessage = "Password must contain at least 1 number"
                         }
                         password != confirmedPassword -> {
                             errorMessage = "Passwords do not match"
-                        }
-                        password.length < 6 -> {
-                            errorMessage = "Password must be at least 6 characters"
                         }
                         else -> {
                             isLoading = true
