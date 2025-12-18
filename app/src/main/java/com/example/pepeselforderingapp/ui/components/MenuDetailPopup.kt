@@ -55,14 +55,8 @@ fun MenuDetailPopup(
 
     // Track selected options for each category
     val selectedOptions = remember {
-        mutableStateMapOf<String, SubitemOption>().apply {
-            menuDetail.subitemCategories.forEach { category ->
-                // Pre-select first option in each category
-                category.options.firstOrNull()?.let { option ->
-                    put(category.title, option)
-                }
-            }
-        }
+        mutableStateMapOf<String, SubitemOption>()
+        // Start with NO selections - user must select from each category
     }
 
     // Check if all categories have a selection
