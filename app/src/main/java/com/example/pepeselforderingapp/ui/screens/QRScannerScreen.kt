@@ -1,5 +1,14 @@
 package com.example.pepeselforderingapp.ui.screens
 
+import android.Manifest
+import android.util.Log
+import androidx.camera.core.CameraSelector
+import androidx.camera.core.ExperimentalGetImage
+import androidx.camera.core.ImageAnalysis
+import androidx.camera.core.ImageProxy
+import androidx.camera.core.Preview as CameraPreview
+import androidx.camera.lifecycle.ProcessCameraProvider
+import androidx.camera.view.PreviewView
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
@@ -12,48 +21,83 @@ import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.compose.ui.viewinterop.AndroidView
+import androidx.lifecycle.compose.LocalLifecycleOwner
 import com.example.pepeselforderingapp.R
 import com.example.pepeselforderingapp.ui.theme.BrownDark
 import com.example.pepeselforderingapp.ui.theme.CarterOne
 import com.example.pepeselforderingapp.ui.theme.OrangePrimary
 import com.example.pepeselforderingapp.ui.theme.PepeSelfOrderingAppTheme
+import com.google.accompanist.permissions.ExperimentalPermissionsApi
+import com.google.accompanist.permissions.isGranted
+import com.google.accompanist.permissions.rememberPermissionState
+import com.google.mlkit.vision.barcode.BarcodeScanning
+import com.google.mlkit.vision.barcode.common.Barcode
+import com.google.mlkit.vision.common.InputImage
+import java.util.concurrent.Executors
 
 data class ScannedQRData(
     val outlet: String,
     val table: String
 )
 
+@OptIn(ExperimentalPermissionsApi::class)
 @Composable
 fun QRScannerScreen(
     modifier: Modifier = Modifier,
     onQRScanned: (ScannedQRData) -> Unit = {}
 ) {
+    val cameraPermissionState = rememberPermissionState(Manifest.permission.CAMERA)
     var scannedData by remember { mutableStateOf<ScannedQRData?>(null) }
 
-    // Simulate QR code scanning after 2 seconds and navigate immediately
     LaunchedEffect(Unit) {
-        kotlinx.coroutines.delay(2000)
-        val data = ScannedQRData(
-            outlet = "Outlet Brooklyn Tower",
-            table = "Table A7B"
-        )
-        scannedData = data
-        // Navigate after another 1 second
-        kotlinx.coroutines.delay(1000)
-        onQRScanned(data)
+        if (!cameraPermissionState.status.isGranted) {
+            cameraPermissionState.launchPermissionRequest()
+        }
+    }
+
+    // Navigate after QR code is scanned
+    LaunchedEffect(scannedData) {
+        scannedData?.let { data ->
+            kotlinx.coroutines.delay(1500)
+            onQRScanned(data)
+        }
     }
 
     Box(
         modifier = modifier
             .fillMaxSize()
-            .background(Color(0xFF2C2C2C)) // Dark gray to simulate camera view instead of pure black
+            .background(Color(0xFF2C2C2C))
     ) {
-        // TODO: Add actual camera view here using CameraX
+        if (cameraPermissionState.status.isGranted) {
+            CameraPreview(
+                onQRCodeScanned = { qrData ->
+                    if (scannedData == null) {
+                        scannedData = qrData
+                    }
+                }
+            )
+        } else {
+            // Show permission denied message
+            Box(
+                modifier = Modifier.fillMaxSize(),
+                contentAlignment = Alignment.Center
+            ) {
+                Text(
+                    text = "Camera permission is required\nto scan QR codes",
+                    fontFamily = CarterOne,
+                    fontSize = 18.sp,
+                    color = Color.White,
+                    textAlign = TextAlign.Center
+                )
+            }
+        }
 
         // Semi-transparent overlay with cutout
         Canvas(modifier = Modifier.fillMaxSize()) {
@@ -98,13 +142,11 @@ fun QRScannerScreen(
             val cornerColor = OrangePrimary
 
             // Top-left corner
-            // Horizontal line
             drawRect(
                 color = cornerColor,
                 topLeft = Offset(scanBoxLeft, scanBoxTop),
                 size = Size(cornerSize, borderThickness)
             )
-            // Vertical line
             drawRect(
                 color = cornerColor,
                 topLeft = Offset(scanBoxLeft, scanBoxTop),
@@ -112,13 +154,11 @@ fun QRScannerScreen(
             )
 
             // Top-right corner
-            // Horizontal line
             drawRect(
                 color = cornerColor,
                 topLeft = Offset(scanBoxLeft + scanBoxSize - cornerSize, scanBoxTop),
                 size = Size(cornerSize, borderThickness)
             )
-            // Vertical line
             drawRect(
                 color = cornerColor,
                 topLeft = Offset(scanBoxLeft + scanBoxSize - borderThickness, scanBoxTop),
@@ -126,13 +166,11 @@ fun QRScannerScreen(
             )
 
             // Bottom-left corner
-            // Vertical line
             drawRect(
                 color = cornerColor,
                 topLeft = Offset(scanBoxLeft, scanBoxTop + scanBoxSize - cornerSize),
                 size = Size(borderThickness, cornerSize)
             )
-            // Horizontal line
             drawRect(
                 color = cornerColor,
                 topLeft = Offset(scanBoxLeft, scanBoxTop + scanBoxSize - borderThickness),
@@ -140,13 +178,11 @@ fun QRScannerScreen(
             )
 
             // Bottom-right corner
-            // Vertical line
             drawRect(
                 color = cornerColor,
                 topLeft = Offset(scanBoxLeft + scanBoxSize - borderThickness, scanBoxTop + scanBoxSize - cornerSize),
                 size = Size(borderThickness, cornerSize)
             )
-            // Horizontal line
             drawRect(
                 color = cornerColor,
                 topLeft = Offset(scanBoxLeft + scanBoxSize - cornerSize, scanBoxTop + scanBoxSize - borderThickness),
@@ -233,19 +269,111 @@ fun QRScannerScreen(
     }
 }
 
-@Preview(showBackground = true)
 @Composable
-fun QRScannerScreenPreview() {
-    PepeSelfOrderingAppTheme {
-        QRScannerScreen(
-            onQRScanned = {}
-        )
+fun CameraPreview(
+    onQRCodeScanned: (ScannedQRData) -> Unit
+) {
+    val context = LocalContext.current
+    val lifecycleOwner = LocalLifecycleOwner.current
+    val cameraProviderFuture = remember { ProcessCameraProvider.getInstance(context) }
+    val executor = remember { Executors.newSingleThreadExecutor() }
+    val barcodeScanner = remember { BarcodeScanning.getClient() }
+
+    AndroidView(
+        factory = { ctx ->
+            val previewView = PreviewView(ctx)
+            val preview = CameraPreview.Builder().build()
+            val selector = CameraSelector.Builder()
+                .requireLensFacing(CameraSelector.LENS_FACING_BACK)
+                .build()
+
+            preview.setSurfaceProvider(previewView.surfaceProvider)
+
+            val imageAnalysis = ImageAnalysis.Builder()
+                .setBackpressureStrategy(ImageAnalysis.STRATEGY_KEEP_ONLY_LATEST)
+                .build()
+
+            imageAnalysis.setAnalyzer(executor) { imageProxy ->
+                processImageProxy(barcodeScanner, imageProxy, onQRCodeScanned)
+            }
+
+            try {
+                cameraProviderFuture.get().unbindAll()
+                cameraProviderFuture.get().bindToLifecycle(
+                    lifecycleOwner,
+                    selector,
+                    preview,
+                    imageAnalysis
+                )
+            } catch (e: Exception) {
+                Log.e("CameraPreview", "Error binding camera", e)
+            }
+
+            previewView
+        },
+        modifier = Modifier.fillMaxSize()
+    )
+}
+
+@androidx.annotation.OptIn(ExperimentalGetImage::class)
+private fun processImageProxy(
+    barcodeScanner: com.google.mlkit.vision.barcode.BarcodeScanner,
+    imageProxy: ImageProxy,
+    onQRCodeScanned: (ScannedQRData) -> Unit
+) {
+    val mediaImage = imageProxy.image
+    if (mediaImage != null) {
+        val image = InputImage.fromMediaImage(mediaImage, imageProxy.imageInfo.rotationDegrees)
+
+        barcodeScanner.process(image)
+            .addOnSuccessListener { barcodes ->
+                for (barcode in barcodes) {
+                    when (barcode.valueType) {
+                        Barcode.TYPE_TEXT, Barcode.TYPE_URL -> {
+                            barcode.rawValue?.let { qrContent ->
+                                // Parse QR code content
+                                // Expected format: "outlet:Brooklyn Tower,table:A7B"
+                                val data = parseQRContent(qrContent)
+                                if (data != null) {
+                                    onQRCodeScanned(data)
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+            .addOnFailureListener { e ->
+                Log.e("QRScanner", "Barcode scanning failed", e)
+            }
+            .addOnCompleteListener {
+                imageProxy.close()
+            }
+    } else {
+        imageProxy.close()
+    }
+}
+
+private fun parseQRContent(qrContent: String): ScannedQRData? {
+    return try {
+        // Try to parse format: "outlet:Brooklyn Tower,table:A7B"
+        val parts = qrContent.split(",")
+        if (parts.size >= 2) {
+            val outlet = parts[0].substringAfter("outlet:").trim()
+            val table = parts[1].substringAfter("table:").trim()
+            ScannedQRData("Outlet $outlet", "Table $table")
+        } else {
+            // Fallback: use dummy data for any QR code
+            ScannedQRData("Outlet Brooklyn Tower", "Table A7B")
+        }
+    } catch (e: Exception) {
+        // If parsing fails, return dummy data
+        ScannedQRData("Outlet Brooklyn Tower", "Table A7B")
     }
 }
 
 @Preview(showBackground = true)
 @Composable
-fun QRScannerScreenScannedPreview() {
+fun QRScannerScreenPreview() {
     PepeSelfOrderingAppTheme {
         QRScannerScreen(
             onQRScanned = {}
