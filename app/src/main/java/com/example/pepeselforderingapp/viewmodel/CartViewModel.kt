@@ -46,9 +46,10 @@ class CartViewModel : ViewModel() {
     val cartItems: List<CartItemData> get() = _cartItems
 
     fun addToCart(item: CartItemData) {
-        // Check if the same item with same subitems already exists
+        // Check if the same item with same base price and same subitems already exists
         val existingItemIndex = _cartItems.indexOfFirst { cartItem ->
             cartItem.name == item.name &&
+            cartItem.basePrice == item.basePrice &&  // Also check base price
             cartItem.selectedSubitems == item.selectedSubitems
         }
 
@@ -88,4 +89,3 @@ class CartViewModel : ViewModel() {
         return _cartItems.isEmpty()
     }
 }
-

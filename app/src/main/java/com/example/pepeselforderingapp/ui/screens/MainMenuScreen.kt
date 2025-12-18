@@ -169,8 +169,12 @@ fun MainMenuScreen(
                                         )
                                     },
                                     onAddToCart = { menuItem ->
-                                        // Find the corresponding menu data
-                                        val menuData = menus.find { it.name == menuItem.name }
+                                        // Find the corresponding menu data by matching both name AND price
+                                        // This ensures items with same name but different prices are treated as different items
+                                        val menuData = menus.find {
+                                            it.name == menuItem.name &&
+                                            "Rp. ${formatPrice(it.price)}" == menuItem.price
+                                        }
                                         if (menuData != null) {
                                             selectedMenuItem = menuItem
                                             selectedMenuDetail = MenuDetail(
