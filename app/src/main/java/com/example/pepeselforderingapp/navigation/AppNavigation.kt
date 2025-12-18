@@ -109,6 +109,11 @@ fun AppNavigation() {
                     tableNumber = scannedData.table
                     outletName = scannedData.outlet
                     navController.navigate(Screen.MainMenu.route)
+                },
+                onLogout = {
+                    navController.navigate(Screen.Register.route) {
+                        popUpTo(0) { inclusive = true }
+                    }
                 }
             )
         }

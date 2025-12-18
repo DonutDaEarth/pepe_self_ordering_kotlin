@@ -30,6 +30,7 @@ import androidx.compose.ui.unit.sp
 import androidx.compose.ui.viewinterop.AndroidView
 import androidx.lifecycle.compose.LocalLifecycleOwner
 import com.example.pepeselforderingapp.R
+import com.example.pepeselforderingapp.data.storage.AuthDataStore
 import com.example.pepeselforderingapp.ui.theme.BrownDark
 import com.example.pepeselforderingapp.ui.theme.CarterOne
 import com.example.pepeselforderingapp.ui.theme.OrangePrimary
@@ -40,6 +41,7 @@ import com.google.accompanist.permissions.rememberPermissionState
 import com.google.mlkit.vision.barcode.BarcodeScanning
 import com.google.mlkit.vision.barcode.common.Barcode
 import com.google.mlkit.vision.common.InputImage
+import kotlinx.coroutines.launch
 import java.util.concurrent.Executors
 
 data class ScannedQRData(
@@ -51,8 +53,12 @@ data class ScannedQRData(
 @Composable
 fun QRScannerScreen(
     modifier: Modifier = Modifier,
-    onQRScanned: (ScannedQRData) -> Unit = {}
+    onQRScanned: (ScannedQRData) -> Unit = {},
+    onLogout: () -> Unit = {}
 ) {
+    val context = LocalContext.current
+    val authDataStore = remember { AuthDataStore(context) }
+    val coroutineScope = rememberCoroutineScope()
     val cameraPermissionState = rememberPermissionState(Manifest.permission.CAMERA)
     var scannedData by remember { mutableStateOf<ScannedQRData?>(null) }
 
@@ -265,6 +271,20 @@ fun QRScannerScreen(
                     }
                 }
             }
+
+            Spacer(modifier = Modifier.height(13.dp))
+
+            // Logout button
+            com.example.pepeselforderingapp.ui.components.TextButton(
+                text = "Log out of Current Account",
+                onClick = {
+                    coroutineScope.launch {
+                        authDataStore.clearAuthData()
+                        onLogout()
+                    }
+                },
+
+            )
         }
     }
 }
