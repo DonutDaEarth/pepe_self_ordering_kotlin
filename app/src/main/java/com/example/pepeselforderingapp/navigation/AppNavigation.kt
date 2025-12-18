@@ -1,10 +1,20 @@
 package com.example.pepeselforderingapp.navigation
 
+import androidx.compose.foundation.background
+import androidx.compose.foundation.layout.*
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.runtime.*
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalContext
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
+import com.example.pepeselforderingapp.data.storage.AuthDataStore
 import com.example.pepeselforderingapp.ui.screens.*
+import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.launch
 
 sealed class Screen(val route: String) {
     object Register : Screen("register")
@@ -19,6 +29,41 @@ sealed class Screen(val route: String) {
 @Composable
 fun AppNavigation() {
     val navController = rememberNavController()
+    val context = LocalContext.current
+    val authDataStore: AuthDataStore = remember { AuthDataStore(context) }
+    val coroutineScope = rememberCoroutineScope()
+
+    var isCheckingAuth by remember { mutableStateOf(true) }
+    var startDestination by remember { mutableStateOf(Screen.Register.route) }
+
+    // Check if user is already logged in
+    LaunchedEffect(Unit) {
+        coroutineScope.launch {
+            val token = authDataStore.token.first()
+            startDestination = if (token != null) {
+                Screen.QRScanner.route
+            } else {
+                Screen.Register.route
+            }
+            isCheckingAuth = false
+        }
+    }
+
+    // Don't show anything while checking auth
+    if (isCheckingAuth) {
+        // Show a simple loading screen
+        Box(
+            modifier = Modifier
+                .fillMaxSize()
+                .background(Color(0xFFFEF4E0)),
+            contentAlignment = Alignment.Center
+        ) {
+            CircularProgressIndicator(
+                color = com.example.pepeselforderingapp.ui.theme.OrangePrimary
+            )
+        }
+        return
+    }
 
     // State to hold cart items across screens
     var cartItems by remember { mutableStateOf<List<CartItem>>(emptyList()) }
@@ -27,7 +72,7 @@ fun AppNavigation() {
 
     NavHost(
         navController = navController,
-        startDestination = Screen.Register.route
+        startDestination = startDestination
     ) {
         // Register Screen
         composable(Screen.Register.route) {
@@ -35,8 +80,10 @@ fun AppNavigation() {
                 onLoginClick = {
                     navController.navigate(Screen.Login.route)
                 },
-                onRegisterClick = {
-                    navController.navigate(Screen.QRScanner.route)
+                onRegisterSuccess = {
+                    navController.navigate(Screen.QRScanner.route) {
+                        popUpTo(Screen.Register.route) { inclusive = true }
+                    }
                 }
             )
         }
@@ -47,9 +94,9 @@ fun AppNavigation() {
                 onBackPressed = {
                     navController.popBackStack()
                 },
-                onLoginClick = {
+                onLoginSuccess = {
                     navController.navigate(Screen.QRScanner.route) {
-                        popUpTo(Screen.Register.route) { inclusive = false }
+                        popUpTo(Screen.Register.route) { inclusive = true }
                     }
                 }
             )
