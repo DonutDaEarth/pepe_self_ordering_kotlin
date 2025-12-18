@@ -44,24 +44,27 @@ fun MainMenuScreen(
     var isLoading by remember { mutableStateOf(true) }
     var errorMessage by remember { mutableStateOf<String?>(null) }
     var menuCategories by remember { mutableStateOf<List<Pair<String, List<MenuItemData>>>>(emptyList()) }
+    var searchQuery by remember { mutableStateOf("") }
+    var isSearching by remember { mutableStateOf(false) }
 
     val context = androidx.compose.ui.platform.LocalContext.current
     val menuRepository = remember { MenuRepository(context) }
     val coroutineScope = rememberCoroutineScope()
 
-    // Fetch menu data when screen loads
-    LaunchedEffect(outletId) {
+    // Function to load all menus
+    fun loadAllMenus() {
         if (outletId != null) {
             isLoading = true
             errorMessage = null
+            isSearching = false
             coroutineScope.launch {
                 val result = menuRepository.getOutletMenus(outletId)
                 result.onSuccess { response ->
                     if (response.success) {
-                        // Group menus by category
+                        // Group menus by category, filtering out items where is_selling is false
                         menuCategories = response.data.map { categoryData ->
-                            categoryData.category to categoryData.menus
-                        }
+                            categoryData.category to categoryData.menus.filter { it.is_selling }
+                        }.filter { it.second.isNotEmpty() }
                     } else {
                         errorMessage = "Failed to load menu data"
                     }
@@ -77,6 +80,60 @@ fun MainMenuScreen(
         }
     }
 
+    // Function to search menus
+    fun searchMenus(keyword: String) {
+        if (outletId != null && keyword.isNotBlank()) {
+            isLoading = true
+            errorMessage = null
+            isSearching = true
+            coroutineScope.launch {
+                val result = menuRepository.searchMenus(outletId, keyword)
+                result.onSuccess { response ->
+                    if (response.success) {
+                        // Convert search response to menu categories format
+                        menuCategories = response.data.map { categoryData ->
+                            categoryData.category to categoryData.menus
+                                .filter { it.is_selling }
+                                .map { searchItem ->
+                                    // Convert SearchMenuItem to MenuItemData
+                                    MenuItemData(
+                                        id = searchItem.id,
+                                        m_id = searchItem.m_id,
+                                        o_id = searchItem.o_id,
+                                        price = searchItem.price,
+                                        stock = searchItem.stock,
+                                        is_selling = searchItem.is_selling,
+                                        sku = searchItem.menu.sku,
+                                        name = searchItem.menu.name,
+                                        desc = searchItem.menu.desc,
+                                        category = searchItem.menu.category,
+                                        picture_url = searchItem.menu.picture_url,
+                                        picture_path = searchItem.menu.picture_path,
+                                        subitems = emptyList() // Search response doesn't include subitems initially
+                                    )
+                                }
+                        }.filter { it.second.isNotEmpty() }
+                    } else {
+                        errorMessage = "No results found"
+                        menuCategories = emptyList()
+                    }
+                    isLoading = false
+                }.onFailure { exception ->
+                    errorMessage = exception.message ?: "Search failed"
+                    isLoading = false
+                }
+            }
+        } else if (keyword.isBlank()) {
+            // If search is cleared, reload all menus
+            loadAllMenus()
+        }
+    }
+
+    // Fetch menu data when screen loads
+    LaunchedEffect(outletId) {
+        loadAllMenus()
+    }
+
     // Check if cart has items
     val hasItemsInCart = cartViewModel?.cartItems?.isNotEmpty() ?: false
 
@@ -88,13 +145,18 @@ fun MainMenuScreen(
         Column(
             modifier = Modifier.fillMaxSize()
         ) {
-            // Header in MAIN_MENU mode
+            // Header in MAIN_MENU mode with search handling
             Header(
                 mode = HeaderMode.MAIN_MENU,
                 onBackClick = onBackPressed,
                 outletName = outlet,
                 tableNumber = table,
-                onSearchChange = onSearchQuery
+                searchQuery = searchQuery,  // Pass the search query state to Header
+                onSearchChange = { query ->
+                    searchQuery = query
+                    // Trigger search when user submits (you'll need to handle this in Header)
+                    searchMenus(query)
+                }
             )
 
             // Content area
@@ -215,6 +277,14 @@ fun MainMenuScreen(
 
         // Menu Detail Popup
         if (showMenuDetail && selectedMenuDetail != null) {
+            // Find the original menu data to get the m_id
+            val originalMenuData = menuCategories
+                .flatMap { it.second }
+                .find {
+                    it.name == selectedMenuDetail!!.name &&
+                    it.price == selectedMenuDetail!!.basePrice
+                }
+
             MenuDetailPopup(
                 menuDetail = selectedMenuDetail!!,
                 onDismiss = {
@@ -223,7 +293,10 @@ fun MainMenuScreen(
                     selectedMenuDetail = null
                 },
                 onAddToCart = { selectedSubitems, quantity ->
-                    // Add to cart with selected subitems
+                    // Extract subitem IDs from selected subitems
+                    val subitemIds = selectedSubitems.values.map { it.id }
+
+                    // Add to cart with menu ID and subitem IDs
                     cartViewModel?.addToCart(
                         CartItemData(
                             name = selectedMenuDetail!!.name,
@@ -231,7 +304,9 @@ fun MainMenuScreen(
                             basePrice = selectedMenuDetail!!.basePrice,
                             selectedSubitems = selectedSubitems,
                             quantity = quantity,
-                            imageRes = selectedMenuDetail!!.imageRes
+                            imageRes = selectedMenuDetail!!.imageRes,
+                            menuId = originalMenuData?.m_id ?: 0,  // Pass the m_id from API
+                            subitemIds = subitemIds  // Pass the subitem IDs
                         )
                     )
                     showMenuDetail = false
@@ -247,8 +322,13 @@ fun MainMenuScreen(
 private fun groupSubitemsByCategory(subitems: List<SubitemData>): List<SubitemCategoryData> {
     if (subitems.isEmpty()) return emptyList()
 
+    // Filter out subitems where is_selling is false
+    val sellingSubitems = subitems.filter { it.is_selling }
+
+    if (sellingSubitems.isEmpty()) return emptyList()
+
     // Group subitems by their category
-    val grouped = subitems.groupBy { it.category }
+    val grouped = sellingSubitems.groupBy { it.category }
 
     return grouped.map { (category, items) ->
         SubitemCategoryData(
@@ -256,11 +336,12 @@ private fun groupSubitemsByCategory(subitems: List<SubitemData>): List<SubitemCa
             options = items.map { subitem ->
                 SubitemOption(
                     name = subitem.name,
-                    price = if (subitem.price != null) "Rp. ${formatPrice(subitem.price)}" else "Rp. 0"
+                    price = if (subitem.price != null) "Rp. ${formatPrice(subitem.price)}" else "Rp. 0",
+                    id = subitem.id  // Include the subitem ID from API
                 )
             }
         )
-    }
+    }.filter { it.options.isNotEmpty() }  // Remove categories with no available options
 }
 
 // Helper function to parse price string

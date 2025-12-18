@@ -17,7 +17,8 @@ import com.example.pepeselforderingapp.ui.theme.PepeSelfOrderingAppTheme
 
 data class SubitemOption(
     val name: String,
-    val price: String
+    val price: String,
+    val id: Int = 0  // Add subitem ID for order creation
 )
 
 @Composable

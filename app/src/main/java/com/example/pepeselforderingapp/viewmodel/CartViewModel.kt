@@ -11,7 +11,9 @@ data class CartItemData(
     val basePrice: Int,
     val selectedSubitems: Map<String, SubitemOption>,
     val quantity: Int = 1,
-    val imageRes: Int? = null
+    val imageRes: Int? = null,
+    val menuId: Int = 0,  // Add menu ID (m_id from API)
+    val subitemIds: List<Int> = emptyList()  // Add subitem IDs for order creation
 ) {
     // Calculate total price for this item including subitems
     fun getTotalPrice(): Int {

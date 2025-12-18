@@ -7,6 +7,7 @@ import retrofit2.http.GET
 import retrofit2.http.Header
 import retrofit2.http.POST
 import retrofit2.http.Path
+import retrofit2.http.Query
 
 interface ApiService {
     @POST("/users/register/customer")
@@ -20,4 +21,23 @@ interface ApiService {
         @Path("outlet_id") outletId: String,
         @Header("Authorization") authorization: String
     ): Response<OutletMenusResponse>
+
+    @GET("/outlet-menus/search")
+    suspend fun searchMenus(
+        @Query("outlet_id") outletId: String,
+        @Query("keyword") keyword: String,
+        @Header("Authorization") authorization: String
+    ): Response<SearchMenuResponse>
+
+    @POST("/orders")
+    suspend fun createOrder(
+        @Header("Authorization") authorization: String,
+        @Body request: CreateOrderRequest
+    ): Response<CreateOrderResponse>
+
+    @GET("/orders/track/{uid}")
+    suspend fun trackOrder(
+        @Path("uid") uid: String,
+        @Header("Authorization") authorization: String
+    ): Response<TrackOrderResponse>
 }

@@ -18,6 +18,7 @@ class AuthDataStore(private val context: Context) {
         private val TOKEN_KEY = stringPreferencesKey("jwt_token")
         private val USER_ID_KEY = intPreferencesKey("user_id")
         private val USER_EMAIL_KEY = stringPreferencesKey("user_email")
+        private val LAST_ORDER_UID_KEY = stringPreferencesKey("last_order_uid")
     }
 
     suspend fun saveAuthData(token: String, userId: Int, email: String) {
@@ -25,6 +26,18 @@ class AuthDataStore(private val context: Context) {
             preferences[TOKEN_KEY] = token
             preferences[USER_ID_KEY] = userId
             preferences[USER_EMAIL_KEY] = email
+        }
+    }
+
+    suspend fun saveLastOrderUid(uid: String) {
+        context.dataStore.edit { preferences ->
+            preferences[LAST_ORDER_UID_KEY] = uid
+        }
+    }
+
+    suspend fun clearLastOrderUid() {
+        context.dataStore.edit { preferences ->
+            preferences.remove(LAST_ORDER_UID_KEY)
         }
     }
 
@@ -38,6 +51,10 @@ class AuthDataStore(private val context: Context) {
 
     val userEmail: Flow<String?> = context.dataStore.data.map { preferences ->
         preferences[USER_EMAIL_KEY]
+    }
+
+    val lastOrderUid: Flow<String?> = context.dataStore.data.map { preferences ->
+        preferences[LAST_ORDER_UID_KEY]
     }
 
     suspend fun clearAuthData() {
@@ -54,4 +71,3 @@ class AuthDataStore(private val context: Context) {
         return isLoggedIn
     }
 }
-
