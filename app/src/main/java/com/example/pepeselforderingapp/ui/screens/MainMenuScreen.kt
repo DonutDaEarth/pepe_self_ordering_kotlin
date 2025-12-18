@@ -12,18 +12,25 @@ import androidx.compose.ui.unit.dp
 import com.example.pepeselforderingapp.ui.components.*
 import com.example.pepeselforderingapp.ui.theme.CreamBackground
 import com.example.pepeselforderingapp.ui.theme.PepeSelfOrderingAppTheme
+import com.example.pepeselforderingapp.viewmodel.CartItemData
+import com.example.pepeselforderingapp.viewmodel.CartViewModel
 
 @Composable
 fun MainMenuScreen(
     modifier: Modifier = Modifier,
     outlet: String = "Outlet Brooklyn Tower",
     table: String = "Table A7B",
+    cartViewModel: CartViewModel? = null,
     onBackPressed: () -> Unit = {},
     onSearchQuery: (String) -> Unit = {},
     onProceedToCart: () -> Unit = {}
 ) {
     var showMenuDetail by remember { mutableStateOf(false) }
     var selectedMenuItem by remember { mutableStateOf<MenuItem?>(null) }
+    var selectedMenuDetail by remember { mutableStateOf<MenuDetail?>(null) }
+
+    // Check if cart has items
+    val hasItemsInCart = cartViewModel?.cartItems?.isNotEmpty() ?: false
 
     Box(
         modifier = modifier
@@ -52,7 +59,7 @@ fun MainMenuScreen(
                     modifier = Modifier
                         .fillMaxSize()
                         .verticalScroll(rememberScrollState())
-                        .padding(bottom = 80.dp)
+                        .padding(bottom = if (hasItemsInCart) 80.dp else 16.dp)
                 ) {
                     Spacer(modifier = Modifier.height(11.dp))
 
@@ -81,6 +88,32 @@ fun MainMenuScreen(
                         ),
                         onAddToCart = { menuItem ->
                             selectedMenuItem = menuItem
+                            selectedMenuDetail = MenuDetail(
+                                name = menuItem.name,
+                                description = menuItem.description,
+                                basePrice = parsePriceFromString(menuItem.price),
+                                imageRes = null,
+                                subitemCategories = listOf(
+                                    SubitemCategoryData(
+                                        title = "Patty Cook Level",
+                                        options = listOf(
+                                            SubitemOption("Rare", "Rp. 0"),
+                                            SubitemOption("Medium Rare", "Rp. 0"),
+                                            SubitemOption("Medium", "Rp. 0"),
+                                            SubitemOption("Well Done", "Rp. 0")
+                                        )
+                                    ),
+                                    SubitemCategoryData(
+                                        title = "Add-ons",
+                                        options = listOf(
+                                            SubitemOption("No Add-ons", "Rp. 0"),
+                                            SubitemOption("Extra Cheese", "Rp. 5.000"),
+                                            SubitemOption("Bacon", "Rp. 8.000"),
+                                            SubitemOption("Fried Egg", "Rp. 5.000")
+                                        )
+                                    )
+                                )
+                            )
                             showMenuDetail = true
                         }
                     )
@@ -112,6 +145,30 @@ fun MainMenuScreen(
                         ),
                         onAddToCart = { menuItem ->
                             selectedMenuItem = menuItem
+                            selectedMenuDetail = MenuDetail(
+                                name = menuItem.name,
+                                description = menuItem.description,
+                                basePrice = parsePriceFromString(menuItem.price),
+                                imageRes = null,
+                                subitemCategories = listOf(
+                                    SubitemCategoryData(
+                                        title = "Size",
+                                        options = listOf(
+                                            SubitemOption("Regular", "Rp. 0"),
+                                            SubitemOption("Large", "Rp. 10.000")
+                                        )
+                                    ),
+                                    SubitemCategoryData(
+                                        title = "Ice Level",
+                                        options = listOf(
+                                            SubitemOption("No Ice", "Rp. 0"),
+                                            SubitemOption("Less Ice", "Rp. 0"),
+                                            SubitemOption("Normal Ice", "Rp. 0"),
+                                            SubitemOption("Extra Ice", "Rp. 0")
+                                        )
+                                    )
+                                )
+                            )
                             showMenuDetail = true
                         }
                     )
@@ -143,6 +200,31 @@ fun MainMenuScreen(
                         ),
                         onAddToCart = { menuItem ->
                             selectedMenuItem = menuItem
+                            selectedMenuDetail = MenuDetail(
+                                name = menuItem.name,
+                                description = menuItem.description,
+                                basePrice = parsePriceFromString(menuItem.price),
+                                imageRes = null,
+                                subitemCategories = listOf(
+                                    SubitemCategoryData(
+                                        title = "Size",
+                                        options = listOf(
+                                            SubitemOption("Regular", "Rp. 0"),
+                                            SubitemOption("Large", "Rp. 8.000")
+                                        )
+                                    ),
+                                    SubitemCategoryData(
+                                        title = "Sauce",
+                                        options = listOf(
+                                            SubitemOption("No Sauce", "Rp. 0"),
+                                            SubitemOption("Ketchup", "Rp. 0"),
+                                            SubitemOption("BBQ Sauce", "Rp. 2.000"),
+                                            SubitemOption("Ranch", "Rp. 3.000"),
+                                            SubitemOption("Spicy Mayo", "Rp. 3.000")
+                                        )
+                                    )
+                                )
+                            )
                             showMenuDetail = true
                         }
                     )
@@ -150,54 +232,46 @@ fun MainMenuScreen(
             }
         }
 
-        // Floating "Proceed to Cart" button at the bottom
-        Box(
-            modifier = Modifier
-                .fillMaxWidth()
-                .align(Alignment.BottomCenter)
-                .padding(horizontal = 18.dp)
-                .padding(bottom = 23.dp)
-        ) {
-            PrimaryButton(
-                text = "Proceed to Cart",
-                onClick = onProceedToCart
-            )
+        // Floating "Proceed to Cart" button at the bottom - only shown if cart has items
+        if (hasItemsInCart) {
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .align(Alignment.BottomCenter)
+                    .padding(horizontal = 18.dp)
+                    .padding(bottom = 23.dp)
+            ) {
+                PrimaryButton(
+                    text = "Proceed to Cart (${cartViewModel?.cartItems?.size ?: 0})",
+                    onClick = onProceedToCart
+                )
+            }
         }
 
         // Menu Detail Popup
-        if (showMenuDetail && selectedMenuItem != null) {
+        if (showMenuDetail && selectedMenuDetail != null) {
             MenuDetailPopup(
-                menuDetail = MenuDetail(
-                    name = selectedMenuItem!!.name,
-                    description = selectedMenuItem!!.description,
-                    basePrice = parsePriceFromString(selectedMenuItem!!.price),
-                    imageRes = null,
-                    subitemCategories = listOf(
-                        SubitemCategoryData(
-                            title = "Milk Choices",
-                            options = listOf(
-                                SubitemOption("Regular Milk", "Rp. 0"),
-                                SubitemOption("Almond Milk", "Rp. 5.000"),
-                                SubitemOption("Soy Milk", "Rp. 3.000")
-                            )
-                        ),
-                        SubitemCategoryData(
-                            title = "Size",
-                            options = listOf(
-                                SubitemOption("Regular", "Rp. 0"),
-                                SubitemOption("Large", "Rp. 10.000")
-                            )
-                        )
-                    )
-                ),
+                menuDetail = selectedMenuDetail!!,
                 onDismiss = {
                     showMenuDetail = false
                     selectedMenuItem = null
+                    selectedMenuDetail = null
                 },
-                onAddToCart = {
-                    // TODO: Add to cart logic
+                onAddToCart = { selectedSubitems, quantity ->
+                    // Add to cart with selected subitems
+                    cartViewModel?.addToCart(
+                        CartItemData(
+                            name = selectedMenuDetail!!.name,
+                            description = selectedMenuDetail!!.description,
+                            basePrice = selectedMenuDetail!!.basePrice,
+                            selectedSubitems = selectedSubitems,
+                            quantity = quantity,
+                            imageRes = selectedMenuDetail!!.imageRes
+                        )
+                    )
                     showMenuDetail = false
                     selectedMenuItem = null
+                    selectedMenuDetail = null
                 }
             )
         }
@@ -216,6 +290,7 @@ fun MainMenuScreenPreview() {
         MainMenuScreen(
             outlet = "Outlet Brooklyn Tower",
             table = "Table A7B",
+            cartViewModel = null,
             onBackPressed = {},
             onSearchQuery = {},
             onProceedToCart = {}

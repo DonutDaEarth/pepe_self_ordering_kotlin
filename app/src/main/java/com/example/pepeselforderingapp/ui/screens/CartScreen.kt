@@ -11,29 +11,22 @@ import androidx.compose.ui.unit.dp
 import com.example.pepeselforderingapp.ui.components.*
 import com.example.pepeselforderingapp.ui.theme.CreamBackground
 import com.example.pepeselforderingapp.ui.theme.PepeSelfOrderingAppTheme
-
-data class CartItem(
-    val name: String,
-    val selectedSubitems: String,
-    val price: String,
-    val quantity: Int,
-    val imageUrl: String? = null
-)
+import com.example.pepeselforderingapp.viewmodel.CartViewModel
 
 @Composable
 fun CartScreen(
     modifier: Modifier = Modifier,
     outlet: String = "Outlet Brooklyn Tower",
     table: String = "Table A7B",
-    cartItems: List<CartItem> = emptyList(),
+    cartViewModel: CartViewModel? = null,
     onBackPressed: () -> Unit = {},
-    onProceedToPayment: () -> Unit = {},
-    onQuantityChange: (Int, Int) -> Unit = { _, _ -> }
+    onProceedToPayment: () -> Unit = {}
 ) {
+    // Get cart items from view model
+    val cartItems = cartViewModel?.cartItems ?: emptyList()
+
     // Calculate subtotal from cart items
-    val subtotal = cartItems.sumOf { item ->
-        parsePriceFromString(item.price) * item.quantity
-    }
+    val subtotal = cartViewModel?.getSubtotal() ?: 0
 
     Box(
         modifier = modifier
@@ -63,18 +56,20 @@ fun CartScreen(
                 cartItems.forEachIndexed { index, item ->
                     CartCard(
                         name = item.name,
-                        selectedSubitems = item.selectedSubitems,
-                        price = item.price,
+                        selectedSubitems = item.getSubitemsDisplayString(),
+                        price = item.getPriceDisplayString(),
                         quantity = item.quantity,
                         onDecrement = {
                             if (item.quantity > 1) {
-                                onQuantityChange(index, item.quantity - 1)
+                                cartViewModel?.updateQuantity(index, item.quantity - 1)
+                            } else {
+                                cartViewModel?.removeItem(index)
                             }
-                        } ,
-                        onIncrement = {
-                            onQuantityChange(index, item.quantity + 1)
                         },
-                        imageUrl = item.imageUrl
+                        onIncrement = {
+                            cartViewModel?.updateQuantity(index, item.quantity + 1)
+                        },
+                        imageUrl = null
                     )
 
                     if (index < cartItems.size - 1) {
@@ -96,11 +91,6 @@ fun CartScreen(
     }
 }
 
-// Helper function to parse price string
-private fun parsePriceFromString(priceString: String): Int {
-    return priceString.replace("Rp. ", "").replace(".", "").toIntOrNull() ?: 0
-}
-
 @Preview(showBackground = true, showSystemUi = true)
 @Composable
 fun CartScreenPreview() {
@@ -108,41 +98,9 @@ fun CartScreenPreview() {
         CartScreen(
             outlet = "Outlet Brooklyn Tower",
             table = "Table A7B",
-            cartItems = listOf(
-                CartItem(
-                    name = "Pepe Burger",
-                    selectedSubitems = "Almond Milk, Large Size",
-                    price = "Rp. 60.000",
-                    quantity = 2
-                ),
-                CartItem(
-                    name = "Iced Coffee",
-                    selectedSubitems = "Regular Milk, Regular Size",
-                    price = "Rp. 25.000",
-                    quantity = 1
-                ),
-                CartItem(
-                    name = "French Fries",
-                    selectedSubitems = "Extra Salt, Large",
-                    price = "Rp. 20.000",
-                    quantity = 3
-                ),
-                CartItem(
-                    name = "Chicken Wings",
-                    selectedSubitems = "Spicy, Ranch Dip",
-                    price = "Rp. 35.000",
-                    quantity = 1
-                ),
-                CartItem(
-                    name = "Cheese Burger",
-                    selectedSubitems = "Regular Milk, Extra Cheese",
-                    price = "Rp. 55.000",
-                    quantity = 2
-                )
-            ),
+            cartViewModel = null,
             onBackPressed = {},
-            onProceedToPayment = {},
-            onQuantityChange = { _, _ -> }
+            onProceedToPayment = {}
         )
     }
 }
@@ -154,11 +112,9 @@ fun CartScreenEmptyPreview() {
         CartScreen(
             outlet = "Outlet Brooklyn Tower",
             table = "Table A7B",
-            cartItems = emptyList(),
+            cartViewModel = null,
             onBackPressed = {},
-            onProceedToPayment = {},
-            onQuantityChange = { _, _ -> }
+            onProceedToPayment = {}
         )
     }
 }
-

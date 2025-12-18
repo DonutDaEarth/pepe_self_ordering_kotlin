@@ -8,11 +8,13 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
+import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
 import com.example.pepeselforderingapp.data.storage.AuthDataStore
 import com.example.pepeselforderingapp.ui.screens.*
+import com.example.pepeselforderingapp.viewmodel.CartViewModel
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 
@@ -32,6 +34,9 @@ fun AppNavigation() {
     val context = LocalContext.current
     val authDataStore: AuthDataStore = remember { AuthDataStore(context) }
     val coroutineScope = rememberCoroutineScope()
+
+    // Create CartViewModel instance that persists across navigation
+    val cartViewModel: CartViewModel = viewModel()
 
     var isCheckingAuth by remember { mutableStateOf(true) }
     var startDestination by remember { mutableStateOf(Screen.Register.route) }
@@ -65,8 +70,7 @@ fun AppNavigation() {
         return
     }
 
-    // State to hold cart items across screens
-    var cartItems by remember { mutableStateOf<List<CartItem>>(emptyList()) }
+    // State to hold table and outlet info
     var tableNumber by remember { mutableStateOf("Table A7B") }
     var outletName by remember { mutableStateOf("Outlet Brooklyn Tower") }
 
@@ -108,9 +112,13 @@ fun AppNavigation() {
                 onQRScanned = { scannedData ->
                     tableNumber = scannedData.table
                     outletName = scannedData.outlet
+                    // Clear cart when scanning new table
+                    cartViewModel.clearCart()
                     navController.navigate(Screen.MainMenu.route)
                 },
                 onLogout = {
+                    // Clear cart on logout
+                    cartViewModel.clearCart()
                     navController.navigate(Screen.Register.route) {
                         popUpTo(0) { inclusive = true }
                     }
@@ -123,6 +131,7 @@ fun AppNavigation() {
             MainMenuScreen(
                 outlet = outletName,
                 table = tableNumber,
+                cartViewModel = cartViewModel,
                 onBackPressed = {
                     navController.popBackStack()
                 },
@@ -137,17 +146,12 @@ fun AppNavigation() {
             CartScreen(
                 outlet = outletName,
                 table = tableNumber,
-                cartItems = cartItems,
+                cartViewModel = cartViewModel,
                 onBackPressed = {
                     navController.popBackStack()
                 },
                 onProceedToPayment = {
                     navController.navigate(Screen.PaymentSuccess.route)
-                },
-                onQuantityChange = { index, newQuantity ->
-                    cartItems = cartItems.toMutableList().apply {
-                        this[index] = this[index].copy(quantity = newQuantity)
-                    }
                 }
             )
         }
@@ -165,13 +169,13 @@ fun AppNavigation() {
 
         // Receipt Screen
         composable(Screen.Receipt.route) {
-            val receiptItems = cartItems.map { cartItem ->
+            val receiptItems = cartViewModel.cartItems.map { cartItem ->
                 ReceiptItem(
                     name = cartItem.name,
-                    selectedSubitems = cartItem.selectedSubitems,
-                    totalPrice = cartItem.price,
+                    selectedSubitems = cartItem.getSubitemsDisplayString(),
+                    totalPrice = cartItem.getPriceDisplayString(),
                     quantity = cartItem.quantity,
-                    imageUrl = cartItem.imageUrl
+                    imageUrl = null
                 )
             }
 
@@ -180,7 +184,7 @@ fun AppNavigation() {
                 outlet = outletName,
                 receiptItems = receiptItems,
                 onMakeAnotherOrder = {
-                    cartItems = emptyList()
+                    cartViewModel.clearCart()
                     navController.navigate(Screen.QRScanner.route) {
                         popUpTo(Screen.Register.route) { inclusive = false }
                     }
