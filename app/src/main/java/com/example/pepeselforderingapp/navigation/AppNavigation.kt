@@ -73,6 +73,7 @@ fun AppNavigation() {
     // State to hold table and outlet info
     var tableNumber by remember { mutableStateOf("Table A7B") }
     var outletName by remember { mutableStateOf("Outlet Brooklyn Tower") }
+    var outletId by remember { mutableStateOf<String?>(null) }
 
     NavHost(
         navController = navController,
@@ -112,6 +113,7 @@ fun AppNavigation() {
                 onQRScanned = { scannedData ->
                     tableNumber = scannedData.table
                     outletName = scannedData.outlet
+                    outletId = scannedData.id  // Store the outlet ID
                     // Clear cart when scanning new table
                     cartViewModel.clearCart()
                     navController.navigate(Screen.MainMenu.route)
@@ -131,6 +133,7 @@ fun AppNavigation() {
             MainMenuScreen(
                 outlet = outletName,
                 table = tableNumber,
+                outletId = outletId,  // Pass the outlet ID
                 cartViewModel = cartViewModel,
                 onBackPressed = {
                     navController.popBackStack()

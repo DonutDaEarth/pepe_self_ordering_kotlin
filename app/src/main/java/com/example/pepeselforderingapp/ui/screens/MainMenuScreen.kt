@@ -4,22 +4,33 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
+import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.Text
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
+import com.example.pepeselforderingapp.data.model.MenuItemData
+import com.example.pepeselforderingapp.data.model.SubitemData
+import com.example.pepeselforderingapp.data.repository.MenuRepository
 import com.example.pepeselforderingapp.ui.components.*
+import com.example.pepeselforderingapp.ui.theme.Actor
+import com.example.pepeselforderingapp.ui.theme.BrownDark
 import com.example.pepeselforderingapp.ui.theme.CreamBackground
 import com.example.pepeselforderingapp.ui.theme.PepeSelfOrderingAppTheme
 import com.example.pepeselforderingapp.viewmodel.CartItemData
 import com.example.pepeselforderingapp.viewmodel.CartViewModel
+import kotlinx.coroutines.launch
 
 @Composable
 fun MainMenuScreen(
     modifier: Modifier = Modifier,
     outlet: String = "Outlet Brooklyn Tower",
     table: String = "Table A7B",
+    outletId: String? = null,
     cartViewModel: CartViewModel? = null,
     onBackPressed: () -> Unit = {},
     onSearchQuery: (String) -> Unit = {},
@@ -28,6 +39,43 @@ fun MainMenuScreen(
     var showMenuDetail by remember { mutableStateOf(false) }
     var selectedMenuItem by remember { mutableStateOf<MenuItem?>(null) }
     var selectedMenuDetail by remember { mutableStateOf<MenuDetail?>(null) }
+
+    // State for API data
+    var isLoading by remember { mutableStateOf(true) }
+    var errorMessage by remember { mutableStateOf<String?>(null) }
+    var menuCategories by remember { mutableStateOf<List<Pair<String, List<MenuItemData>>>>(emptyList()) }
+
+    val context = androidx.compose.ui.platform.LocalContext.current
+    val menuRepository = remember { MenuRepository(context) }
+    val coroutineScope = rememberCoroutineScope()
+
+    // Fetch menu data when screen loads
+    LaunchedEffect(outletId) {
+        if (outletId != null) {
+            isLoading = true
+            errorMessage = null
+            coroutineScope.launch {
+                val result = menuRepository.getOutletMenus(outletId)
+                result.onSuccess { response ->
+                    if (response.success) {
+                        // Group menus by category
+                        menuCategories = response.data.map { categoryData ->
+                            categoryData.category to categoryData.menus
+                        }
+                    } else {
+                        errorMessage = "Failed to load menu data"
+                    }
+                    isLoading = false
+                }.onFailure { exception ->
+                    errorMessage = exception.message ?: "Unknown error occurred"
+                    isLoading = false
+                }
+            }
+        } else {
+            isLoading = false
+            errorMessage = "No outlet ID provided"
+        }
+    }
 
     // Check if cart has items
     val hasItemsInCart = cartViewModel?.cartItems?.isNotEmpty() ?: false
@@ -49,185 +97,98 @@ fun MainMenuScreen(
                 onSearchChange = onSearchQuery
             )
 
-            // Scrollable content with menu categories
+            // Content area
             Box(
                 modifier = Modifier
                     .fillMaxSize()
                     .weight(1f)
             ) {
-                Column(
-                    modifier = Modifier
-                        .fillMaxSize()
-                        .verticalScroll(rememberScrollState())
-                        .padding(bottom = if (hasItemsInCart) 80.dp else 16.dp)
-                ) {
-                    Spacer(modifier = Modifier.height(11.dp))
-
-                    // Mock data - First category
-                    MenuCategory(
-                        categoryName = "Burgers",
-                        menuItems = listOf(
-                            MenuItem(
-                                name = "Pepe Burger",
-                                description = "Classic beef burger with lettuce, tomato, and special sauce",
-                                price = "Rp. 45.000",
-                                imageUrl = null
-                            ),
-                            MenuItem(
-                                name = "Cheese Burger",
-                                description = "Juicy beef patty with melted cheese and pickles",
-                                price = "Rp. 50.000",
-                                imageUrl = null
-                            ),
-                            MenuItem(
-                                name = "Chicken Burger",
-                                description = "Crispy chicken fillet with mayo and fresh vegetables",
-                                price = "Rp. 42.000",
-                                imageUrl = null
-                            )
-                        ),
-                        onAddToCart = { menuItem ->
-                            selectedMenuItem = menuItem
-                            selectedMenuDetail = MenuDetail(
-                                name = menuItem.name,
-                                description = menuItem.description,
-                                basePrice = parsePriceFromString(menuItem.price),
-                                imageRes = null,
-                                subitemCategories = listOf(
-                                    SubitemCategoryData(
-                                        title = "Patty Cook Level",
-                                        options = listOf(
-                                            SubitemOption("Rare", "Rp. 0"),
-                                            SubitemOption("Medium Rare", "Rp. 0"),
-                                            SubitemOption("Medium", "Rp. 0"),
-                                            SubitemOption("Well Done", "Rp. 0")
-                                        )
-                                    ),
-                                    SubitemCategoryData(
-                                        title = "Add-ons",
-                                        options = listOf(
-                                            SubitemOption("No Add-ons", "Rp. 0"),
-                                            SubitemOption("Extra Cheese", "Rp. 5.000"),
-                                            SubitemOption("Bacon", "Rp. 8.000"),
-                                            SubitemOption("Fried Egg", "Rp. 5.000")
-                                        )
-                                    )
-                                )
-                            )
-                            showMenuDetail = true
+                when {
+                    isLoading -> {
+                        // Loading state
+                        Box(
+                            modifier = Modifier.fillMaxSize(),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            CircularProgressIndicator()
                         }
-                    )
-
-                    Spacer(modifier = Modifier.height(24.dp))
-
-                    // Mock data - Second category
-                    MenuCategory(
-                        categoryName = "Drinks",
-                        menuItems = listOf(
-                            MenuItem(
-                                name = "Iced Coffee",
-                                description = "Cold brew coffee served with ice",
-                                price = "Rp. 25.000",
-                                imageUrl = null
-                            ),
-                            MenuItem(
-                                name = "Latte",
-                                description = "Espresso with steamed milk and foam",
-                                price = "Rp. 30.000",
-                                imageUrl = null
-                            ),
-                            MenuItem(
-                                name = "Fresh Orange Juice",
-                                description = "Freshly squeezed orange juice",
-                                price = "Rp. 20.000",
-                                imageUrl = null
+                    }
+                    errorMessage != null -> {
+                        // Error state
+                        Box(
+                            modifier = Modifier
+                                .fillMaxSize()
+                                .padding(24.dp),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Text(
+                                text = errorMessage ?: "Error loading menu",
+                                fontFamily = Actor,
+                                fontSize = 16.sp,
+                                color = BrownDark,
+                                textAlign = TextAlign.Center
                             )
-                        ),
-                        onAddToCart = { menuItem ->
-                            selectedMenuItem = menuItem
-                            selectedMenuDetail = MenuDetail(
-                                name = menuItem.name,
-                                description = menuItem.description,
-                                basePrice = parsePriceFromString(menuItem.price),
-                                imageRes = null,
-                                subitemCategories = listOf(
-                                    SubitemCategoryData(
-                                        title = "Size",
-                                        options = listOf(
-                                            SubitemOption("Regular", "Rp. 0"),
-                                            SubitemOption("Large", "Rp. 10.000")
-                                        )
-                                    ),
-                                    SubitemCategoryData(
-                                        title = "Ice Level",
-                                        options = listOf(
-                                            SubitemOption("No Ice", "Rp. 0"),
-                                            SubitemOption("Less Ice", "Rp. 0"),
-                                            SubitemOption("Normal Ice", "Rp. 0"),
-                                            SubitemOption("Extra Ice", "Rp. 0")
-                                        )
-                                    )
-                                )
-                            )
-                            showMenuDetail = true
                         }
-                    )
-
-                    Spacer(modifier = Modifier.height(24.dp))
-
-                    // Mock data - Third category
-                    MenuCategory(
-                        categoryName = "Sides",
-                        menuItems = listOf(
-                            MenuItem(
-                                name = "French Fries",
-                                description = "Crispy golden fries with sea salt",
-                                price = "Rp. 15.000",
-                                imageUrl = null
-                            ),
-                            MenuItem(
-                                name = "Onion Rings",
-                                description = "Battered and fried onion rings",
-                                price = "Rp. 18.000",
-                                imageUrl = null
-                            ),
-                            MenuItem(
-                                name = "Chicken Wings",
-                                description = "Spicy chicken wings with ranch dip",
-                                price = "Rp. 35.000",
-                                imageUrl = null
+                    }
+                    menuCategories.isEmpty() -> {
+                        // Empty state
+                        Box(
+                            modifier = Modifier
+                                .fillMaxSize()
+                                .padding(24.dp),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Text(
+                                text = "No menu items available",
+                                fontFamily = Actor,
+                                fontSize = 16.sp,
+                                color = BrownDark,
+                                textAlign = TextAlign.Center
                             )
-                        ),
-                        onAddToCart = { menuItem ->
-                            selectedMenuItem = menuItem
-                            selectedMenuDetail = MenuDetail(
-                                name = menuItem.name,
-                                description = menuItem.description,
-                                basePrice = parsePriceFromString(menuItem.price),
-                                imageRes = null,
-                                subitemCategories = listOf(
-                                    SubitemCategoryData(
-                                        title = "Size",
-                                        options = listOf(
-                                            SubitemOption("Regular", "Rp. 0"),
-                                            SubitemOption("Large", "Rp. 8.000")
-                                        )
-                                    ),
-                                    SubitemCategoryData(
-                                        title = "Sauce",
-                                        options = listOf(
-                                            SubitemOption("No Sauce", "Rp. 0"),
-                                            SubitemOption("Ketchup", "Rp. 0"),
-                                            SubitemOption("BBQ Sauce", "Rp. 2.000"),
-                                            SubitemOption("Ranch", "Rp. 3.000"),
-                                            SubitemOption("Spicy Mayo", "Rp. 3.000")
-                                        )
-                                    )
-                                )
-                            )
-                            showMenuDetail = true
                         }
-                    )
+                    }
+                    else -> {
+                        // Display menu categories
+                        Column(
+                            modifier = Modifier
+                                .fillMaxSize()
+                                .verticalScroll(rememberScrollState())
+                                .padding(bottom = if (hasItemsInCart) 80.dp else 16.dp)
+                        ) {
+                            Spacer(modifier = Modifier.height(11.dp))
+
+                            menuCategories.forEach { (category, menus) ->
+                                MenuCategory(
+                                    categoryName = category,
+                                    menuItems = menus.map { menuData ->
+                                        MenuItem(
+                                            name = menuData.name,
+                                            description = menuData.desc,
+                                            price = "Rp. ${formatPrice(menuData.price)}",
+                                            imageUrl = menuData.picture_url
+                                        )
+                                    },
+                                    onAddToCart = { menuItem ->
+                                        // Find the corresponding menu data
+                                        val menuData = menus.find { it.name == menuItem.name }
+                                        if (menuData != null) {
+                                            selectedMenuItem = menuItem
+                                            selectedMenuDetail = MenuDetail(
+                                                name = menuData.name,
+                                                description = menuData.desc,
+                                                basePrice = menuData.price,
+                                                imageRes = null,
+                                                subitemCategories = groupSubitemsByCategory(menuData.subitems)
+                                            )
+                                            showMenuDetail = true
+                                        }
+                                    }
+                                )
+
+                                Spacer(modifier = Modifier.height(24.dp))
+                            }
+                        }
+                    }
                 }
             }
         }
@@ -278,9 +239,34 @@ fun MainMenuScreen(
     }
 }
 
+// Helper function to group subitems by category
+private fun groupSubitemsByCategory(subitems: List<SubitemData>): List<SubitemCategoryData> {
+    if (subitems.isEmpty()) return emptyList()
+
+    // Group subitems by their category
+    val grouped = subitems.groupBy { it.category }
+
+    return grouped.map { (category, items) ->
+        SubitemCategoryData(
+            title = category,
+            options = items.map { subitem ->
+                SubitemOption(
+                    name = subitem.name,
+                    price = if (subitem.price != null) "Rp. ${formatPrice(subitem.price)}" else "Rp. 0"
+                )
+            }
+        )
+    }
+}
+
 // Helper function to parse price string
 private fun parsePriceFromString(priceString: String): Int {
     return priceString.replace("Rp. ", "").replace(".", "").toIntOrNull() ?: 0
+}
+
+// Helper function to format price
+private fun formatPrice(price: Int): String {
+    return price.toString().reversed().chunked(3).joinToString(".").reversed()
 }
 
 @Preview(showBackground = true, showSystemUi = false)
@@ -290,6 +276,7 @@ fun MainMenuScreenPreview() {
         MainMenuScreen(
             outlet = "Outlet Brooklyn Tower",
             table = "Table A7B",
+            outletId = "1",
             cartViewModel = null,
             onBackPressed = {},
             onSearchQuery = {},
