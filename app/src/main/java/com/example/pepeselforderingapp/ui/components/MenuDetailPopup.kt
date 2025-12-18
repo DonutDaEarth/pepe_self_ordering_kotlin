@@ -55,14 +55,8 @@ fun MenuDetailPopup(
 
     // Track selected options for each category
     val selectedOptions = remember {
-        mutableStateMapOf<String, SubitemOption>().apply {
-            menuDetail.subitemCategories.forEach { category ->
-                // Pre-select first option in each category
-                category.options.firstOrNull()?.let { option ->
-                    put(category.title, option)
-                }
-            }
-        }
+        mutableStateMapOf<String, SubitemOption>()
+        // Start with NO selections - user must select from each category
     }
 
     // Check if all categories have a selection
@@ -215,18 +209,106 @@ fun MenuDetailPopup(
 
                     Spacer(modifier = Modifier.height(17.dp))
 
-                    // Add To Cart Button
-                    PrimaryButton(
-                        text = "Add To Cart",
-                        onClick = {
-                            if (allCategoriesSelected.value) {
-                                onAddToCart(selectedOptions.toMap(), quantity)
-                                onDismiss()
+                    // Mode switch: Add To Cart button OR Already in Cart counter
+                    if (!isInCart) {
+                        // Add To Cart Button Mode
+                        PrimaryButton(
+                            text = "Add To Cart",
+                            onClick = {
+                                if (allCategoriesSelected.value) {
+                                    isInCart = true
+                                    quantity = 1
+                                    onAddToCart(selectedOptions.toMap(), quantity)
+                                }
+                            },
+                            modifier = Modifier.fillMaxWidth(),
+                            enabled = allCategoriesSelected.value
+                        )
+                    } else {
+                        // Already in Cart Mode with Counter
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth(),
+                            horizontalArrangement = Arrangement.SpaceBetween,
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Text(
+                                text = "Already In Cart:",
+                                fontFamily = CarterOne,
+                                fontSize = 25.sp,
+                                color = androidx.compose.ui.graphics.Color(0xFF524A42).copy(alpha = 0.75f)
+                            )
+
+                            // Counter Row
+                            Row(
+                                verticalAlignment = Alignment.CenterVertically,
+                                horizontalArrangement = Arrangement.spacedBy(0.dp)
+                            ) {
+                                // Decrease Button
+                                Button(
+                                    onClick = {
+                                        if (quantity > 1) {
+                                            quantity--
+                                            onAddToCart(selectedOptions.toMap(), quantity)
+                                        } else {
+                                            // When quantity reaches 0, switch back to Add to Cart button
+                                            quantity = 0
+                                            isInCart = false
+                                            onAddToCart(selectedOptions.toMap(), 0)
+                                        }
+                                    },
+                                    modifier = Modifier
+                                        .size(36.dp),
+                                    colors = ButtonDefaults.buttonColors(
+                                        containerColor = OrangePrimary
+                                    ),
+                                    contentPadding = PaddingValues(0.dp),
+                                    shape = RoundedCornerShape(9.dp)
+                                ) {
+                                    Text(
+                                        text = "-",
+                                        fontFamily = CarterOne,
+                                        fontSize = 30.sp,
+                                        color = androidx.compose.ui.graphics.Color(0xFF524A42)
+                                    )
+                                }
+
+                                // Quantity Display
+                                Text(
+                                    text = quantity.toString(),
+                                    fontFamily = CarterOne,
+                                    fontSize = 30.sp,
+                                    color = androidx.compose.ui.graphics.Color(0xFF524A42),
+                                    modifier = Modifier.width(48.dp),
+                                    textAlign = androidx.compose.ui.text.style.TextAlign.Center
+                                )
+
+                                // Increase Button
+                                Button(
+                                    onClick = {
+                                        if (quantity < 99) {
+                                            quantity++
+                                            onAddToCart(selectedOptions.toMap(), quantity)
+                                        }
+                                    },
+                                    modifier = Modifier
+                                        .size(36.dp),
+                                    colors = ButtonDefaults.buttonColors(
+                                        containerColor = OrangePrimary
+                                    ),
+                                    contentPadding = PaddingValues(0.dp),
+                                    shape = RoundedCornerShape(9.dp)
+                                ) {
+                                    Text(
+                                        text = "+",
+                                        fontFamily = CarterOne,
+                                        fontSize = 30.sp,
+                                        color = androidx.compose.ui.graphics.Color(0xFF524A42)
+                                    )
+                                }
                             }
-                        },
-                        modifier = Modifier.fillMaxWidth(),
-                        enabled = allCategoriesSelected.value
-                    )
+                        }
+                    }
 
                     Spacer(modifier = Modifier.height(23.dp))
                 }
