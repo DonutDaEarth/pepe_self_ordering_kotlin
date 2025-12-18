@@ -47,27 +47,5 @@ data class SearchMenuResponse(
 
 data class SearchMenuCategory(
     val category: String,
-    val menus: List<SearchMenuItem>
-)
-
-data class SearchMenuItem(
-    val id: Int,
-    val m_id: Int,
-    val o_id: Int,
-    val price: Int,
-    val stock: Int?,
-    val is_selling: Boolean,
-    val created_at: String,
-    val updated_at: String,
-    val menu: SearchMenuDetail
-)
-
-data class SearchMenuDetail(
-    val id: Int,
-    val sku: String,
-    val name: String,
-    val desc: String,
-    val category: String,
-    val picture_url: String?,
-    val picture_path: String?
+    val menus: List<MenuItemData>  // Now uses MenuItemData directly since structure is the same
 )

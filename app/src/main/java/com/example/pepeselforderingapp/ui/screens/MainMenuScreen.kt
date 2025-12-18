@@ -90,28 +90,9 @@ fun MainMenuScreen(
                 val result = menuRepository.searchMenus(outletId, keyword)
                 result.onSuccess { response ->
                     if (response.success) {
-                        // Convert search response to menu categories format
+                        // Search response now has the same structure as regular menus
                         menuCategories = response.data.map { categoryData ->
-                            categoryData.category to categoryData.menus
-                                .filter { it.is_selling }
-                                .map { searchItem ->
-                                    // Convert SearchMenuItem to MenuItemData
-                                    MenuItemData(
-                                        id = searchItem.id,
-                                        m_id = searchItem.m_id,
-                                        o_id = searchItem.o_id,
-                                        price = searchItem.price,
-                                        stock = searchItem.stock,
-                                        is_selling = searchItem.is_selling,
-                                        sku = searchItem.menu.sku,
-                                        name = searchItem.menu.name,
-                                        desc = searchItem.menu.desc,
-                                        category = searchItem.menu.category,
-                                        picture_url = searchItem.menu.picture_url,
-                                        picture_path = searchItem.menu.picture_path,
-                                        subitems = emptyList() // Search response doesn't include subitems initially
-                                    )
-                                }
+                            categoryData.category to categoryData.menus.filter { it.is_selling }
                         }.filter { it.second.isNotEmpty() }
                     } else {
                         errorMessage = "No results found"
