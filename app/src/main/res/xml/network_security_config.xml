@@ -8,5 +8,10 @@
     <domain-config cleartextTrafficPermitted="true">
         <domain includeSubdomains="true">pepe.codedoc.cloud</domain>
     </domain-config>
+    <domain-config cleartextTrafficPermitted="false">
+        <domain includeSubdomains="true">storage.googleapis.com</domain>
+        <trust-anchors>
+            <certificates src="system" />
+        </trust-anchors>
+    </domain-config>
 </network-security-config>
-

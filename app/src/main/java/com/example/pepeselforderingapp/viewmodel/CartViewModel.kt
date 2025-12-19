@@ -12,6 +12,7 @@ data class CartItemData(
     val selectedSubitems: Map<String, SubitemOption>,
     val quantity: Int = 1,
     val imageRes: Int? = null,
+    val imageUrl: String? = null,  // Add imageUrl for API images
     val menuId: Int = 0,  // Add menu ID (m_id from API)
     val subitemIds: List<Int> = emptyList()  // Add subitem IDs for order creation
 ) {

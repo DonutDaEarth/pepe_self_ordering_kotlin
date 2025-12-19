@@ -225,6 +225,7 @@ fun MainMenuScreen(
                                                 description = menuData.desc,
                                                 basePrice = menuData.price,
                                                 imageRes = null,
+                                                imageUrl = menuData.picture_url,  // Pass the picture_url from API
                                                 subitemCategories = groupSubitemsByCategory(menuData.subitems)
                                             )
                                             showMenuDetail = true
@@ -286,6 +287,7 @@ fun MainMenuScreen(
                             selectedSubitems = selectedSubitems,
                             quantity = quantity,
                             imageRes = selectedMenuDetail!!.imageRes,
+                            imageUrl = selectedMenuDetail!!.imageUrl,  // Pass the imageUrl
                             menuId = originalMenuData?.m_id ?: 0,  // Pass the m_id from API
                             subitemIds = subitemIds  // Pass the subitem IDs
                         )

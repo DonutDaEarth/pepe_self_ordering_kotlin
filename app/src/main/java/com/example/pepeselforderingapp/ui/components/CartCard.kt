@@ -4,17 +4,23 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import coil.compose.SubcomposeAsyncImage
+import coil.request.ImageRequest
 import com.example.pepeselforderingapp.ui.theme.Actor
 import com.example.pepeselforderingapp.ui.theme.BrownDark
 import com.example.pepeselforderingapp.ui.theme.CarterOne
@@ -32,7 +38,7 @@ fun CartCard(
     onDecrement: () -> Unit,
     onIncrement: () -> Unit,
     modifier: Modifier = Modifier,
-    @Suppress("UNUSED_PARAMETER") imageUrl: String? = null
+    imageUrl: String? = null
 ) {
     Row(
         modifier = modifier
@@ -41,16 +47,45 @@ fun CartCard(
             .padding(horizontal = 17.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
-        // Menu image placeholder
+        // Menu image with loading state
         Box(
             modifier = Modifier
                 .size(96.dp)
+                .clip(RoundedCornerShape(20.dp))
                 .background(
                     color = GreenMuted,
                     shape = RoundedCornerShape(20.dp)
-                )
+                ),
+            contentAlignment = Alignment.Center
         ) {
-            // TODO: Add actual image loading when imageUrl is provided
+            if (!imageUrl.isNullOrEmpty()) {
+                SubcomposeAsyncImage(
+                    model = ImageRequest.Builder(LocalContext.current)
+                        .data(imageUrl)
+                        .crossfade(true)
+                        .build(),
+                    contentDescription = name,
+                    contentScale = ContentScale.Crop,
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .clip(RoundedCornerShape(20.dp)),
+                    loading = {
+                        Box(
+                            modifier = Modifier.fillMaxSize(),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            CircularProgressIndicator(
+                                modifier = Modifier.size(32.dp),
+                                color = OrangePrimary,
+                                strokeWidth = 3.dp
+                            )
+                        }
+                    },
+                    error = {
+                        // Show placeholder on error (green background already visible)
+                    }
+                )
+            }
         }
 
         Spacer(modifier = Modifier.width(14.dp))

@@ -72,7 +72,8 @@ data class OrderItemDetail(
     val price: Int,
     val total: Int,
     val subitems: List<SubitemDetail>,  // Changed to proper type
-    val name: String  // Added name field
+    val name: String,  // Added name field
+    val picture_url: String? = null  // Add picture_url field from API
 )
 
 data class SubitemDetail(

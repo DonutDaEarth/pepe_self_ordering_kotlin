@@ -280,7 +280,7 @@ fun AppNavigation() {
                         selectedSubitems = subitemNames,
                         totalPrice = "Rp. ${formatPrice(item.total)}",
                         quantity = item.quantity,
-                        imageUrl = null
+                        imageUrl = item.picture_url  // Use the picture_url from API response
                     )
                 }
 

@@ -69,7 +69,7 @@ fun CartScreen(
                         onIncrement = {
                             cartViewModel?.updateQuantity(index, item.quantity + 1)
                         },
-                        imageUrl = null
+                        imageUrl = item.imageUrl  // Pass the actual imageUrl
                     )
 
                     if (index < cartItems.size - 1) {

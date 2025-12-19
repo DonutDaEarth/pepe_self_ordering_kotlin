@@ -18,12 +18,13 @@ import androidx.compose.material3.ButtonDefaults
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.shadow
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import coil.compose.AsyncImage
 import com.example.pepeselforderingapp.R
 import com.example.pepeselforderingapp.ui.theme.*
 
@@ -32,9 +33,9 @@ data class MenuDetail(
     val description: String,
     val basePrice: Int,
     val imageRes: Int? = null,
+    val imageUrl: String? = null,  // Add imageUrl field for API images
     val subitemCategories: List<SubitemCategoryData> = emptyList()
 )
-
 data class SubitemCategoryData(
     val title: String,
     val options: List<SubitemOption>
@@ -109,23 +110,26 @@ fun MenuDetailPopup(
                     modifier = Modifier
                         .fillMaxWidth()
                         .aspectRatio(1.6f)
-                        .shadow(
-                            elevation = 4.dp,
-                            shape = RoundedCornerShape(bottomStart = 16.dp, bottomEnd = 16.dp)
-                        )
-                        .background(
-                            color = GreenMuted,
-                            shape = RoundedCornerShape(bottomStart = 16.dp, bottomEnd = 16.dp)
-                        )
+                        .clip(RoundedCornerShape(bottomStart = 16.dp, bottomEnd = 16.dp))
                 ) {
-                    // Placeholder for image - will show actual image when provided
-                    if (menuDetail.imageRes != null) {
-                        Image(
-                            painter = painterResource(id = menuDetail.imageRes),
-                            contentDescription = menuDetail.name,
-                            modifier = Modifier.fillMaxSize(),
-                            contentScale = ContentScale.Crop
-                        )
+                    // Display image from URL or local resource
+                    when {
+                        menuDetail.imageUrl != null -> {
+                            AsyncImage(
+                                model = menuDetail.imageUrl,
+                                contentDescription = menuDetail.name,
+                                modifier = Modifier.fillMaxSize(),
+                                contentScale = ContentScale.Crop
+                            )
+                        }
+                        menuDetail.imageRes != null -> {
+                            Image(
+                                painter = painterResource(id = menuDetail.imageRes),
+                                contentDescription = menuDetail.name,
+                                modifier = Modifier.fillMaxSize(),
+                                contentScale = ContentScale.Crop
+                            )
+                        }
                     }
                 }
 
